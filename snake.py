@@ -19,7 +19,7 @@ gameWindow=pygame.display.set_mode((screen_width,screen_height))
 
 
 # background image
-bgimg=pygame.image.load("snake.jpg")
+bgimg=pygame.image.load("grass_bg.jpg")
 bgimg=pygame.transform.scale(bgimg,(screen_width,screen_height)).convert_alpha()
 
 
@@ -45,7 +45,7 @@ def Welcome():
     exit_game=False
     while not exit_game:
         gameWindow.fill((233,210,229))
-        text_screen("Welcome to Snakes",black,260,250)
+        text_screen("Welcome to Snake Game",black,260,250)
         text_screen("Press Space Bar To Play",black,232,290)
         for event in pygame.event.get():
             if event.type==pygame.QUIT:
