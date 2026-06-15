@@ -10,6 +10,11 @@ screen=pygame.display.set_mode((w,h))
 pygame.display.set_caption("Car Simulator")
 font=pygame.font.Font(None,22)
 
+
+
+
+
+
 # colors
 game_bg=(18,18,18)
 panel_bg=(40,40,40)
@@ -54,10 +59,9 @@ def main():
             if e.type==pygame.QUIT:
                 running=False
 
-        car.draw(screen)
-        pygame.display.flip()       
-
+       
     pygame.quit()
 
 if __name__=="__main__":
     main()
+
