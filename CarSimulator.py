@@ -34,11 +34,15 @@ class Car:
         self.y=game_h//2
         self.angle=0.0
         self.speed=0.0
+        self.image=pygame.image.load("car.png")
+        self.image=pygame.transform.scale(self.image,(car_w,car_h))
 
 
     def draw(self,surf):
+
         car_s=pygame.Surface((car_w,car_h))
         pygame.draw.rect(car_s,car_color,(0,0,car_w,car_h),border_radius=5)
+        # car_s=self.image
         rotated=pygame.transform.rotate(car_s,self.angle)
         rect=rotated.get_rect(center=(self.x,self.y))
         screen.blit(rotated, rect)
