@@ -1,5 +1,7 @@
 import pygame
 import math
+import cv2
+import threading
 
 pygame.init()
 
@@ -26,8 +28,42 @@ max_accel=600.0
 brake_force=4.0
 friction=220.0
 
+cap=cv2.VideoCapture(0)
+eye_command="forward"
+lock=threading.Lock()
 
+def camera_thread():
+    global eye_command
+    face_cascade=cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    eye_cascade=cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_eye.xml")
 
+    while(True):
+        ret,frame=cap.read()
+        if not ret:
+              continue
+        gray=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+        faces=face_cascade.detectMultiScale(gray,1.1,5)
+
+        for(x,y,fw,fh) in faces:
+            face_roi=gray[y:y+fh,x:x+fw]
+            eyes=eye_cascade.detectMultiScale(face_roi,1.1,5)
+
+            # count kar rhe
+            if len(eyes)==0:
+                cmd="brake"
+            elif len(eyes)==1:
+                ex,ey,ew,eh=eyes[0]
+                eye_centre_x=ex+ew//2
+                if eye_centre_x<fw//2:
+                     cmd="left"
+                else:
+                    cmd="right"     
+            else:
+                cmd="forward"  
+            with lock:
+                 eye_command=cmd          
+        cv2.imshow("Camera", frame)
+        cv2.waitKey(1)
 class Car:
     def __init__(self):
         self.x=game_w//2
@@ -57,20 +93,29 @@ class Car:
                 self.speed-=friction*dt
                 self.speed=max(self.speed,0.0)
         if keys[pygame.K_a]:
-                self.angle+=3.0
+                if self.speed>0:
+                     self.angle+=3.0
         if keys[pygame.K_d]:
-                self.angle-=3.0     
+            if self.speed>0:
+                 self.angle-=3.0
+
+
+        # Friction add kr rhe
+        self.speed-=friction*dt
+        self.speed=max(self.speed,0.0)       
         # position update ho rha hai
         self.x +=math.cos(math.radians(self.angle))*self.speed * dt
         self.y -=math.sin(math.radians(self.angle))*self.speed * dt
         self.x=max(0,min(self.x,game_w))
         self.y=max(0,min(self.y,game_h))
 
-
 def main():
     clock=pygame.time.Clock()
     car=Car()
+    t=threading.Thread(target=camera_thread,daemon=True)
+    t.start()
     running=True
+    emotion="neutral"
 
     while running:
         dt=clock.tick(60)/1000.0
@@ -78,13 +123,26 @@ def main():
         car.update(dt)
         car.draw(screen)
         pygame.draw.rect(screen,panel_bg,(0,game_h,w,panel_h))
+        
+        # Panel me changes kar rhe hh
+        speed_text=font.render(f"SPEED: {int(car.speed)}",True,(255,255,255))
+        angle_text=font.render(f"ANGLE: {int(car.angle% 360)}",True,(255,255,255))
+        emotion_text=font.render(f"EMOTION: {emotion}",True,(255,255,255))
+        
+        
+        # Panel update ho rha
+        screen.blit(speed_text,(20,game_h+20))
+        screen.blit(angle_text,(220,game_h+20))
+        screen.blit(emotion_text,(420,game_h+20)) 
+
+
 
         # events
         for e in pygame.event.get():
             if e.type==pygame.QUIT:
                 running=False
         pygame.display.update()
-       
+          
     pygame.quit()
 
 if __name__=="__main__":
