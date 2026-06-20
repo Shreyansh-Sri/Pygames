@@ -43,7 +43,7 @@ def camera_thread():
               continue
         gray=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
         faces=face_cascade.detectMultiScale(gray,1.1,5)
-
+        cv2.rectangle(frame,(x,y),(x+fw,y+fh),(0,255,0),2)
         for(x,y,fw,fh) in faces:
             face_roi=gray[y:y+fh,x:x+fw]
             eyes=eye_cascade.detectMultiScale(face_roi,1.1,5)
