@@ -2,6 +2,7 @@ import pygame
 import math
 import cv2
 import threading
+import time
 
 pygame.init()
 
@@ -22,18 +23,22 @@ obst_color=(255,200,200)
 
 
 # car physics
+# global variable
 car_w,car_h=45,20
 max_speed=300.0
 max_accel=600.0
 brake_force=4.0
 friction=220.0
-
+# for smooth face rect
+smooth_x,smooth_y,smooth_fw,smooth_fh=0,0,0,0
 cap=cv2.VideoCapture(0)
 eye_command="forward"
+lastseencmd="forward"
+cmdstarttime=time.time()
 lock=threading.Lock()
 
 def camera_thread():
-    global eye_command
+    global eye_command,lastseencmd,cmdstarttime
     face_cascade=cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
     eye_cascade=cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_eye.xml")
 
@@ -43,10 +48,19 @@ def camera_thread():
               continue
         gray=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
         faces=face_cascade.detectMultiScale(gray,1.1,5)
-        cv2.rectangle(frame,(x,y),(x+fw,y+fh),(0,255,0),2)
+
+
         for(x,y,fw,fh) in faces:
-            face_roi=gray[y:y+fh,x:x+fw]
+            face_roi=gray[y:y+fh//2,x:x+fw]
             eyes=eye_cascade.detectMultiScale(face_roi,1.1,5)
+
+            cv2.rectangle(frame,(x,y),(x+fw,y+fh),(0,255,0),2)
+            for(ex,ey,ew,eh) in eyes:
+                    eye_centre=(x+ex+ew//2,y+ey+eh//2)
+                    radius=ew//2
+                    cv2.circle(frame,eye_centre,radius,(255,255,0),2)
+                    cv2.circle(frame,eye_centre,3,(0,0,255),-1)
+
 
             # count kar rhe
             if len(eyes)==0:
@@ -60,10 +74,31 @@ def camera_thread():
                     cmd="right"     
             else:
                 cmd="forward"  
-            with lock:
-                 eye_command=cmd          
+
+                          
+            
+            if cmd!=lastseencmd:
+                lastseencmd=cmd
+                cmdstarttime=time.time()
+            else:
+                if time.time()-cmdstarttime>0.3:
+                    with lock:
+                        eye_command=cmd
+            print (eye_command)          
+        if len(faces)==0:
+            cmd="brake"
+            if cmd!=lastseencmd:
+                lastseencmd=cmd
+                cmdstarttime=time.time()
+            else:
+                if time.time()-cmdstarttime>0.3:
+                    with lock:
+                        eye_command=cmd
+            print(eye_command)
         cv2.imshow("Camera", frame)
         cv2.waitKey(1)
+
+        
 class Car:
     def __init__(self):
         self.x=game_w//2
@@ -98,8 +133,23 @@ class Car:
         if keys[pygame.K_d]:
             if self.speed>0:
                  self.angle-=3.0
-
-
+        global eye_command
+        with lock:
+             cmd=eye_command
+        
+        if cmd=="forward":
+             self.speed+=max_accel*dt
+             self.speed=min(self.speed,max_speed)
+        elif cmd=="left":
+             if self.speed>0:
+                  self.angle+=3.0          
+        elif cmd=="right":
+             if self.speed>0:
+                  self.angle-=3.0
+        elif cmd=="brake":
+             self.speed-=friction*dt
+             self.speed=max(self.speed,0.0)          
+             
         # Friction add kr rhe
         self.speed-=friction*dt
         self.speed=max(self.speed,0.0)       
@@ -110,6 +160,7 @@ class Car:
         self.y=max(0,min(self.y,game_h))
 
 def main():
+    global eye_command
     clock=pygame.time.Clock()
     car=Car()
     t=threading.Thread(target=camera_thread,daemon=True)
@@ -127,10 +178,10 @@ def main():
         # Panel me changes kar rhe hh
         speed_text=font.render(f"SPEED: {int(car.speed)}",True,(255,255,255))
         angle_text=font.render(f"ANGLE: {int(car.angle% 360)}",True,(255,255,255))
-        emotion_text=font.render(f"EMOTION: {emotion}",True,(255,255,255))
+        emotion_text=font.render(f"CMD: {eye_command}",True,(255,255,255))
         
         
-        # Panel update ho rha
+        # Panel ko update ho rha
         screen.blit(speed_text,(20,game_h+20))
         screen.blit(angle_text,(220,game_h+20))
         screen.blit(emotion_text,(420,game_h+20)) 
