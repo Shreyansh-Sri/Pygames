@@ -186,8 +186,6 @@ def main():
         screen.blit(angle_text,(220,game_h+20))
         screen.blit(emotion_text,(420,game_h+20)) 
 
-
-
         # events
         for e in pygame.event.get():
             if e.type==pygame.QUIT:
